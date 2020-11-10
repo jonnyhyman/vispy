@@ -5,7 +5,7 @@
 # -----------------------------------------------------------------------------
 
 from .globject import GLObject
-from .texture import Texture2D
+from .texture import Texture2D, Texture2DMultisample
 from .wrappers import _check_valid, read_pixels
 from .context import get_current_canvas
 from ..ext.six import string_types
@@ -82,9 +82,9 @@ class RenderBuffer(GLObject):
                                  ' or "stencil", not %r' % format)
         else:
             raise ValueError('Invalid RenderBuffer format: %r' % format)
-        
+
         # Store and send GLIR command
-        self._shape = tuple(shape[:2])
+        self._shape = shape#tuple(shape[:2])
         self._format = format
         if self._format is not None:
             self._glir.command('SIZE', self._id, self._shape, self._format)
@@ -151,20 +151,20 @@ class FrameBuffer(GLObject):
             if buffer.format is None:
                 buffer.resize(buffer.shape, format)
             elif buffer.format in formats and buffer.format != format:
-                raise ValueError('Cannot attach a %s buffer as %s buffer.' % 
-                                 (buffer.format, format)) 
+                raise ValueError('Cannot attach a %s buffer as %s buffer.' %
+                                 (buffer.format, format))
         # Attach
         if buffer is None:
             setattr(self, '_%s_buffer' % format, None)
             self._glir.command('ATTACH', self._id, format, 0)
-        elif isinstance(buffer, (Texture2D, RenderBuffer)):
+        elif isinstance(buffer, (Texture2D, Texture2DMultisample, RenderBuffer)):
             self.glir.associate(buffer.glir)
             setattr(self, '_%s_buffer' % format, buffer)
             self._glir.command('ATTACH', self._id, format, buffer.id)
         else:
             raise TypeError("Buffer must be a RenderBuffer, Texture2D or None."
                             " (got %s)" % type(buffer))
-    
+
     @property
     def color_buffer(self):
         """Color buffer attachment"""
@@ -222,13 +222,13 @@ class FrameBuffer(GLObject):
             if buf is None:
                 continue
             shape_ = shape
-            if isinstance(buf, Texture2D):
+            if isinstance(buf, Texture2D) or isinstance(buf, Texture2DMultisample):
                 shape_ = shape + (buf._inv_formats[buf.format], )
             buf.resize(shape_, buf.format)
-    
+
     def read(self, mode='color', alpha=True, crop=None):
         """ Return array of pixel values in an attached buffer
-        
+
         Parameters
         ----------
         mode : str

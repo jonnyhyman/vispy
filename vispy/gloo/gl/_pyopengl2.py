@@ -206,7 +206,6 @@ def glTexImage2D(target, level, internalformat, format, type, pixels):
         height, width = pixels.shape[:2]
     GL.glTexImage2D(target, level, internalformat, width, height, border, format, type, pixels)
 
-
 def glTexSubImage2D(target, level, xoffset, yoffset, format, type, pixels):
     height, width = pixels.shape[:2]
     GL.glTexSubImage2D(target, level, xoffset, yoffset, width, height, format, type, pixels)
@@ -233,6 +232,10 @@ _functions_to_import = [
     ("glBlendEquationSeparate", "glBlendEquationSeparate"),
     ("glBlendFunc", "glBlendFunc"),
     ("glBlendFuncSeparate", "glBlendFuncSeparate"),
+
+    ("glBlitFramebuffer"),
+    ("glDrawBuffer"),
+
     ("glCheckFramebufferStatus", "glCheckFramebufferStatus"),
     ("glClear", "glClear"),
     ("glClearColor", "glClearColor"),
@@ -286,6 +289,9 @@ _functions_to_import = [
     ("glPolygonOffset", "glPolygonOffset"),
     ("glReadPixels", "glReadPixels"),
     ("glRenderbufferStorage", "glRenderbufferStorage"),
+
+    ("glRenderbufferStorageMultisample"),
+
     ("glSampleCoverage", "glSampleCoverage"),
     ("glScissor", "glScissor"),
     ("glStencilFunc", "glStencilFunc"),
@@ -294,6 +300,9 @@ _functions_to_import = [
     ("glStencilMaskSeparate", "glStencilMaskSeparate"),
     ("glStencilOp", "glStencilOp"),
     ("glStencilOpSeparate", "glStencilOpSeparate"),
+
+    ("glTexImage2DMultisample"),
+
     ("glTexParameterf", "glTexParameterf"),
     ("glTexParameteri", "glTexParameteri"),
     ("glUniform1f", "glUniform1f"),

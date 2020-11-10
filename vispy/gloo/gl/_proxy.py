@@ -10,7 +10,7 @@ class BaseGLProxy(object):
     """ Base proxy class for the GL ES 2.0 API. Subclasses should
     implement __call__ to process the API calls.
     """
-   
+
     def __call__(self, funcname, returns, *args):
         raise NotImplementedError()
 
@@ -418,6 +418,9 @@ class BaseGLProxy(object):
     def glTexImage2D(self, target, level, internalformat, format, type, pixels):
         self("glTexImage2D", False, target, level, internalformat, format, type, pixels)
 
+    # JONNY MULTISAMPLE EXPERIMENT
+    def glTexImage2DMultisample(self, target, samples, internalformat, width, height, fixedsamplelocations):
+        self("glTexImage2DMultisample", False, target, samples, internalformat, width, height, fixedsamplelocations)
 
     def glTexParameterf(self, target, pname, param):
         self("glTexParameterf", False, target, pname, param)
@@ -495,5 +498,3 @@ class BaseGLProxy(object):
 
     def glViewport(self, x, y, width, height):
         self("glViewport", False, x, y, width, height)
-
-

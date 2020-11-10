@@ -710,6 +710,10 @@ class GlirParser(BaseGlirParser):
                           'IndexBuffer': GlirIndexBuffer,
                           'Texture1D': GlirTexture1D,
                           'Texture2D': GlirTexture2D,
+
+                          # JONNY MULTISAMPLE EXPERIMENT
+                          'Texture2DMultisample': GlirTexture2DMultisample,
+
                           'Texture3D': GlirTexture3D,
                           'TextureCube': GlirTextureCube,
                           'RenderBuffer': GlirRenderBuffer,
@@ -1488,6 +1492,7 @@ class GlirTexture(GlirObject):
 GL_SAMPLER_1D = gl.Enum('GL_SAMPLER_1D', 35677)
 GL_TEXTURE_1D = gl.Enum('GL_TEXTURE_1D', 3552)
 
+GL_TEXTURE_2D_MULTISAMPLE = gl.Enum('GL_TEXTURE_2D_MULTISAMPLE', 37120)
 
 class GlirTexture1D(GlirTexture):
     _target = GL_TEXTURE_1D
@@ -1556,6 +1561,50 @@ class GlirTexture2D(GlirTexture):
         if alignment != 4:
             gl.glPixelStorei(gl.GL_UNPACK_ALIGNMENT, 4)
 
+# JONNY MULTISAMPLE EXPERIMENT
+
+class GlirTexture2DMultisample(GlirTexture):
+    _target = gl.GL_TEXTURE_2D_MULTISAMPLE
+
+    def set_size(self, shape, format, internalformat):
+
+        """
+        void glTexImage2DMultisample(	GLenum target,
+         	GLsizei samples,
+         	GLenum internalformat,
+         	GLsizei width,
+         	GLsizei height,
+         	GLboolean fixedsamplelocations);
+        """
+
+        # Shape is height, width, channels, samples
+        samples = shape[3]
+        height = shape[0]
+        width = shape[1]
+
+        format = as_enum(format)
+        internalformat = format if internalformat is None \
+            else as_enum(internalformat)
+
+        self.activate()
+        gl.glTexImage2DMultisample(self._target, samples, internalformat,
+                                    width, height, True)
+
+    def set_data(self, *args, **kwargs):
+        raise ValueError("Data setting not possible for Texture2DMultisample")
+
+    def set_wrapping(self, wrapping):
+        pass
+        #self.activate()
+        #gl.glTexParameterf(self._target, gl.GL_TEXTURE_WRAP_S, gl.GL_CLAMP_TO_EDGE)
+        #gl.glTexParameterf(self._target, gl.GL_TEXTURE_WRAP_T, gl.GL_CLAMP_TO_EDGE)
+        #gl.glTexParameteri(self._target, gl.GL_GENERATE_MIPMAP, gl.GL_TRUE)
+
+    def set_interpolation(self, min, mag):
+        pass
+        #self.activate()
+        #gl.glTexParameterf(self._target, gl.GL_TEXTURE_MAG_FILTER, gl.GL_LINEAR)
+        #gl.glTexParameterf(self._target, gl.GL_TEXTURE_MIN_FILTER, gl.GL_LINEAR_MIPMAP_LINEAR)
 
 GL_SAMPLER_3D = gl.Enum('GL_SAMPLER_3D', 35679)
 GL_TEXTURE_3D = gl.Enum('GL_TEXTURE_3D', 32879)
@@ -1716,8 +1765,13 @@ class GlirRenderBuffer(GlirObject):
         if (shape, format) != self._shape_format:
             self._shape_format = shape, format
             self.activate()
-            gl.glRenderbufferStorage(gl.GL_RENDERBUFFER, format,
-                                     shape[1], shape[0])
+            if len(shape) == 3:
+                gl.glRenderbufferStorageMultisample(gl.GL_RENDERBUFFER,
+                                         shape[2], format,
+                                         shape[1], shape[0])
+            else:
+                gl.glRenderbufferStorage(gl.GL_RENDERBUFFER, format,
+                                         shape[1], shape[0])
 
 
 class GlirFrameBuffer(GlirObject):
@@ -1782,6 +1836,13 @@ class GlirFrameBuffer(GlirObject):
                 gl.glFramebufferTexture2D(gl.GL_FRAMEBUFFER, attachment,
                                           gl.GL_TEXTURE_2D, buffer.handle, 0)
                 buffer.deactivate()
+            elif isinstance(buffer, GlirTexture2DMultisample):
+                # JONNY MULTISAMPLE EXPERIMENT
+                buffer.activate()
+                # INFO: 0 is for mipmap level 0 (default) of the texture
+                gl.glFramebufferTexture2D(gl.GL_FRAMEBUFFER, attachment,
+                              gl.GL_TEXTURE_2D_MULTISAMPLE, buffer.handle, 0)
+                buffer.deactivate()
             else:
                 raise ValueError("Invalid attachment: %s" % type(buffer))
         self._validated = False
@@ -1804,6 +1865,11 @@ class GlirFrameBuffer(GlirObject):
             gl.GL_FRAMEBUFFER_UNSUPPORTED:
                 'Combination of internal formats used by attachments is '
                 'not supported.',
+            gl.GL_FRAMEBUFFER_INCOMPLETE_MULTISAMPLE:
+                'Framebuffer incomplete multisample. Attachments do not have '
+                'the same GL_RENDERBUFFER_SAMPLES, or GL_TEXTURE_SAMPLES is '
+                'not the same, or GL_RENDERBUFFER_SAMPLES != GL_TEXTURE_SAMPLES '
+                'or GL_TEXTURE_FIXED_SAMPLE_LOCATIONS is not True in textures'
         }
         raise RuntimeError(_bad_map.get(res, 'Unknown framebuffer error: %r.'
                                         % res))

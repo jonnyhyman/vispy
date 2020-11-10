@@ -273,7 +273,7 @@ class BaseTexture(GLObject):
         self._shape = shape
         self._format = format
         self._internalformat = internalformat
-        self._glir.command('SIZE', self._id, self._shape, self._format, 
+        self._glir.command('SIZE', self._id, self._shape, self._format,
                            self._internalformat)
 
     def set_data(self, data, offset=None, copy=False):
@@ -514,7 +514,109 @@ class Texture2D(BaseTexture):
         """
         return 'texture2D'
 
+# JONNY MULTISAMPLE EXPERIMENT
+class Texture2DMultisample(BaseTexture):
+    _ndim = 2
+    _GLIR_TYPE = "Texture2DMultisample"
 
+    def __init__(self, data=None, format=None, resizable=True,
+                 interpolation=None, wrapping=None, shape=None,
+                 internalformat=None, resizeable=None):
+
+        if shape is not None and len(shape) == 4:
+            self.samples = shape[3]
+            shape = shape[:3]
+
+        elif data is not None and len(data) == 4:
+            self.samples = data[3]
+            data = data[:3]
+
+        # linear interpolation is not valid for multisample texture
+        interpolation = 'nearest'
+
+        BaseTexture.__init__(self, data, format, resizable, interpolation,
+                             wrapping, shape, internalformat, resizeable)
+
+    @property
+    def height(self):
+        """ Texture height """
+        return self._shape[0]
+
+    @property
+    def width(self):
+        """ Texture width """
+        return self._shape[1]
+
+    @property
+    def glsl_type(self):
+        """ GLSL declaration strings required for a variable to hold this data.
+        """
+        return 'uniform', 'sampler2DMS'
+
+    @property
+    def glsl_sampler_type(self):
+        """ GLSL type of the sampler.
+        """
+        return 'sampler2DMS'
+
+    @property
+    def glsl_sample(self):
+        """ GLSL function that samples the texture.
+        """
+        return 'texelFetch'
+
+    def _resize(self, shape, format=None, internalformat=None):
+        """Internal method for resize.
+        """
+        shape = self._normalize_shape(shape)
+
+        # Check
+        if not self._resizable:
+            raise RuntimeError("Texture is not resizable")
+
+        # Determine format
+        if format is None:
+            format = self._formats[shape[-1]]
+            # Keep current format if channels match
+            if self._format and \
+               self._inv_formats[self._format] == self._inv_formats[format]:
+                format = self._format
+        else:
+            format = check_enum(format)
+
+        if internalformat is None:
+            # Keep current internalformat if channels match
+            if self._internalformat and \
+               self._inv_internalformats[self._internalformat] == shape[-1]:
+                internalformat = self._internalformat
+        else:
+
+            internalformat = check_enum(internalformat)
+
+        # Check
+        if format not in self._inv_formats:
+            raise ValueError('Invalid texture format: %r.' % format)
+        elif shape[-1] != self._inv_formats[format]:
+            raise ValueError('Format does not match with given shape. '
+                             '(format expects %d elements, data has %d)' %
+                             (self._inv_formats[format], shape[-1]))
+
+        if internalformat is None:
+            pass
+        elif internalformat not in self._inv_internalformats:
+            raise ValueError(
+                'Invalid texture internalformat: %r. Allowed formats: %r'
+                % (internalformat, self._inv_internalformats)
+            )
+        elif shape[-1] != self._inv_internalformats[internalformat]:
+            raise ValueError('Internalformat does not match with given shape.')
+
+        # Store and send GLIR command
+        self._shape = shape + (self.samples,)
+        self._format = format
+        self._internalformat = internalformat
+        self._glir.command('SIZE', self._id, self._shape, self._format,
+                           self._internalformat)
 # --------------------------------------------------------- Texture3D class ---
 class Texture3D(BaseTexture):
     """ Three dimensional texture
